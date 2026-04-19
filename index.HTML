@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>PAPUCHE</title>
+    <style>
+        :root {
+            --main-bg: #f4f7f6;
+            --bar-bg: #e0e0e0;
+            --plm-blue: #2c3e50;
+            --plm-green: #27ae60;
+            --text-color: #333;
+            --panel-bg: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--main-bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Struttura Principale --- */
+        #main-wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* --- Area Gioco (Sinistra) --- */
+        #game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 360px;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        /* --- Area Armadio (Destra) --- */
+        #closet-area {
+            width: 320px;
+            background: var(--panel-bg);
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto; /* Scroll verticale per l'armadio */
+        }
+
+        /* --- Barra di Stato e Display Peluche --- */
+        .stats-container { margin-bottom: 15px; }
+        .stat-row { display: flex; align-items: center; margin: 8px 0; }
+        .stat-label { width: 70px; font-weight: bold; font-size: 13px; text-align: left; }
+        .bar-outer { flex-grow: 1; height: 12px; background: var(--bar-bg); border-radius: 10px; overflow: hidden; border: 1px solid #ccc; }
+        .bar-inner { height: 100%; width: 100%; transition: width 0.5s ease; }
+        #hunger-bar { background: #ff4757; }
+        #energy-bar { background: #ffa502; }
+        #happiness-bar { background: #2ed573; }
+
+        .status-text { font-style: italic; color: #666; height: 18px; margin-bottom: 10px; font-size: 14px; }
+
+       #peluche-display {
+            position: relative;
+            width: 300px; /* Aumentiamo un po' il display per precisione */
+            height: 350px;
+            margin: 15px auto;
+            background: #fdfdfd;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #eee;
+        }
+
+        .peluche-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: contain; /* Forza il vestito a stare dentro il riquadro */
+            transition: all 0.2s ease;
+        }
+
+        /* LIVELLI (Z-INDEX) */
+        #base-layer { z-index: 1; }
+        #pants-layer { z-index: 2; }
+        #shirt-layer { z-index: 3; }
+        #jacket-layer { z-index: 4; }
+        #shoes-layer { z-index: 5; }
+
+        /* REGOLAZIONI DI POSIZIONE (Sperimentali: aggiusta i % se serve) */
+        #pants-layer {
+            background-size: 40%; /* Rimpicciolisce il pantalone */
+            background-position: center 70%; /* Lo sposta verso il basso sulle gambe */
+        }
+        #shirt-layer {
+            background-size: 55%; 
+            background-position: center 53%; /* Lo mette sul busto */
+        }
+        #jacket-layer {
+            background-size: 65%;
+            background-position: center 43%; /* Leggermente più grande della maglia */
+        }
+        #shoes-layer {
+            background-size: 40%;
+            background-position: center 92%; /* In fondo ai piedi */
+        }
+
+        /* --- Pulsanti Azione Gioco --- */
+        .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .btn-action { padding: 12px 5px; border: none; border-radius: 12px; background: var(--plm-blue); color: white; font-weight: bold; font-size: 12px; cursor: pointer; transition: background 0.2s; }
+        .btn-action:active { transform: scale(0.95); background: #1a252f; }
+        .btn-action:disabled { background: #95a5a6; cursor: not-allowed; }
+
+        /* --- Elementi Armadio --- */
+        #closet-area h3 { margin-top: 0; color: var(--plm-blue); text-align: center; }
+        .closet-section { margin-bottom: 20px; }
+        .closet-section h4 { border-bottom: 2px solid var(--plm-green); padding-bottom: 5px; color: var(--plm-green); margin-bottom: 10px; }
+        .clothing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .clothing-item { width: 100%; padding-top: 100%; /* Mantieni quadrato */ position: relative; border: 2px solid #eee; border-radius: 10px; cursor: pointer; background-size: cover; background-position: center; transition: border-color 0.2s; }
+        .clothing-item:hover { border-color: var(--plm-green); }
+        .clothing-item.active { border-color: var(--plm-blue); background-color: #eaf2f8; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+
+        /* --- Responsive per Schermi Piccoli (iPhone Verticale) --- */
+        @media (max-width: 700px) {
+            #main-wrapper { flex-direction: column; overflow-y: auto; }
+            #game-area { flex: none; width: 100%; padding: 10px; }
+            #closet-area { width: 100%; border-left: none; border-top: 1px solid #ddd; overflow-y: visible; padding: 15px; }
+            #game-container { max-width: none; border-radius: 0 0 25px 25px; box-shadow: none; }
+            .clothing-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="main-wrapper">
+    <div id="game-area">
+        <div id="game-container">
+            <h2>PAPUCHE</h2>
+            
+            <div class="stats-container">
+                <div class="stat-row">
+                    <span class="stat-label">FAME</span>
+                    <div class="bar-outer"><div id="hunger-bar" class="bar-inner"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">ENERGIA</span>
+                    <div class="bar-outer"><div id="energy-bar" class="bar-inner"></div></div>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">FELICITÀ</span>
+                    <div class="bar-outer"><div id="happiness-bar" class="bar-inner"></div></div>
+                </div>
+            </div>
+
+            <div id="status-msg" class="status-text">Sto bene!</div>
+
+            <div id="peluche-display">
+                <div id="base-layer" class="peluche-layer"></div>
+                <div id="pants-layer" class="peluche-layer"></div>
+                <div id="shirt-layer" class="peluche-layer"></div>
+                <div id="jacket-layer" class="peluche-layer"></div>
+                <div id="shoes-layer" class="peluche-layer"></div>
+            </div>
+
+            <div class="actions">
+                <button id="btn-feed" class="btn-action" onclick="feed()">MANGIA 🍕</button>
+                <button id="btn-sleep" class="btn-action" onclick="toggleSleep()">DORMI 💤</button>
+                <button id="btn-play" class="btn-action" onclick="play()">GIOCA 🎮</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="closet-area">
+        <h3>L'Armadio di PAPUCHE</h3>
+        
+        <div class="closet-section">
+            <h4>Pantaloni</h4>
+            <div id="pants-grid" class="clothing-grid">
+                </div>
+        </div>
+
+        <div class="closet-section">
+            <h4>Magliette</h4>
+            <div id="shirt-grid" class="clothing-grid">
+                </div>
+        </div>
+
+        <div class="closet-section">
+            <h4>Giacche</h4>
+            <div id="jacket-grid" class="clothing-grid">
+                </div>
+        </div>
+
+        <div class="closet-section">
+            <h4>Scarpe</h4>
+            <div id="shoes-grid" class="clothing-grid">
+                </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURAZIONE IMMAGINI BASE E STATI ---
+    // Sostituisci questi URL con i link delle immagini reali generati
+    const baseImages = {
+        happy: "https://i.postimg.cc/7YdKZqgC/NUDO-IN-PIEDI.jpg", // Il peluche nudo o con intimo grigio
+        sad: "https://i.postimg.cc/fTp8RMxS/NUDO-TRISTE.jpg",
+        tired: "https://i.postimg.cc/dtp5VJ8h/NUDO-STANCO.jpg",
+        hungry: "https://i.postimg.cc/Kvw08mn4/NUDO-AFFAMATO.jpg",
+        sleeping: "https://i.postimg.cc/fTp8RMxJ/NUDO-DORME.jpg" // Occhi chiusi, Zzz
+    };
+
+    // --- CONFIGURAZIONE IMMAGINI VESTITI (PNG TRASPARENTI) ---
+    // Sostituisci questi URL con i link delle immagini dei vestiti ritagliati
+    const clothingItems = {
+        pants: [
+            { id: 'p1', name: 'PLM Base', url: "https://i.postimg.cc/3xC7Xfrq/PANTALONI-BLU.png", thumb: "https://i.postimg.cc/3xC7Xfrq/PANTALONI-BLU.png" },
+            { id: 'p2', name: 'Jeans', url: "https://i.postimg.cc/g0zpNyr4/PANTALONI-ROSSI.png", thumb: "https://i.postimg.cc/g0zpNyr4/PANTALONI-ROSSI.png" },
+            { id: 'p3', name: 'Sportivi', url: 'URL_PANTALONI_SPORTIVI_NERI', thumb: 'URL_THUMB_SPORTIVI' },
+            { id: 'p4', name: 'Mimetici', url: 'URL_PANTALONI_MIMETICI', thumb: 'URL_THUMB_MIMETICI' },
+            { id: 'p5', name: 'Eleganti', url: 'URL_PANTALONI_ELEGANTI_BLU', thumb: 'URL_THUMB_ELEGANTI' }
+        ],
+        shirt: [
+            { id: 's1', name: 'PLM Polo', url: "https://i.postimg.cc/dVmv2NQz/MAGLIETTA-BIANCA.png", thumb: "https://i.postimg.cc/dVmv2NQz/MAGLIETTA-BIANCA.png" },
+            { id: 's2', name: 'T-Shirt Bianca', url: "https://i.postimg.cc/mrkXLVDN/MAGLIETTA-VERDE.png", thumb: "https://i.postimg.cc/mrkXLVDN/MAGLIETTA-VERDE.png" },
+            { id: 's3', name: 'Camicia Quadri', url: 'URL_CAMICIA_QUADRI', thumb: 'URL_THUMB_CAMICIA_QUADRI' },
+            { id: 's4', name: 'Maglia Righe', url: 'URL_MAGLIA_RIGHE', thumb: 'URL_THUMB_MAGLIA_RIGHE' },
+            { id: 's5', name: 'Maglione Lana', url: 'URL_MAGLIONE_LANA', thumb: 'URL_THUMB_MAGLIONE_LANA' }
+        ],
+        jacket: [
+            { id: 'j1', name: 'PLM Fleece', url: 'URL_GIACCA_PLM_ORIGINALE', thumb: "" },
+            { id: 'j2', name: 'Giacca Pelle', url: 'URL_GIACCA_PELLE_NERA', thumb: "" },
+            { id: 'j3', name: 'Piumino Rosso', url: 'URL_PIUMINO_ROSSO', thumb: 'URL_THUMB_PIUMINO' },
+            { id: 'j4', name: 'Impermeabile', url: 'URL_IMPERMEABILE_GIALLO', thumb: 'URL_THUMB_IMPERMEABILE' },
+            { id: 'j5', name: 'Blazer Grigio', url: 'URL_BLAZER_GRIGIO', thumb: 'URL_THUMB_BLAZER' }
+        ],
+        shoes: [
+            { id: 'sh1', name: 'PLM Safety', url: 'URL_SCARPE_PLM_ORIGINALI', thumb: 'URL_THUMB_SAFETY_PLM' },
+            { id: 'sh2', name: 'Sneakers Bianche', url: 'URL_SNEAKERS_BIANCHE', thumb: 'URL_THUMB_SNEAKERS' },
+            { id: 'sh3', name: 'Stivali Trekking', url: 'URL_STIVALI_TREKKING', thumb: 'URL_THUMB_STIVALI' },
+            { id: 'sh4', name: 'Mocassini', url: 'URL_MOCASSINI_MARRONI', thumb: 'URL_THUMB_MOCASSINI' },
+            { id: 'sh5', name: 'Sandali', url: 'URL_SANDALI_ESTIVI', thumb: 'URL_THUMB_SANDALI' }
+        ]
+    };
+
+    // Stato del Gioco
+    let stats = { hunger: 100, energy: 100, happiness: 100 };
+    let isSleeping = false;
+    let currentOutfit = { pants: 'p1', shirt: 's1', jacket: 'j1', shoes: 'sh1' }; // Outfit iniziale PLM
+
+    // --- LOGICA DEL GIOCO (Tamagotchi) ---
+    function updateUI() {
+        // Aggiorna Barre
+        document.getElementById('hunger-bar').style.width = stats.hunger + "%";
+        document.getElementById('energy-bar').style.width = stats.energy + "%";
+        document.getElementById('happiness-bar').style.width = stats.happiness + "%";
+
+        const baseLayer = document.getElementById('base-layer');
+        const msg = document.getElementById('status-msg');
+        const btnSleep = document.getElementById('btn-sleep');
+
+        // Aggiorna Immagine Base e Messaggio
+        if (isSleeping) {
+            baseLayer.style.backgroundImage = `url(${baseImages.sleeping})`;
+            msg.innerText = "Zzz... sta riposando... Shhh!";
+            btnSleep.innerText = "SVEGLIA ⏰";
+        } else {
+            btnSleep.innerText = "DORMI 💤";
+            if (stats.hunger < 30) {
+                baseLayer.style.backgroundImage = `url(${baseImages.hungry})`;
+                msg.innerText = "Ho una fame da lupi! Dammi della pizza!";
+            } else if (stats.energy < 30) {
+                baseLayer.style.backgroundImage = `url(${baseImages.tired})`;
+                msg.innerText = "Sono esausto... ho bisogno di dormire.";
+            } else if (stats.happiness < 30) {
+                baseLayer.style.backgroundImage = `url(${baseImages.sad})`;
+                msg.innerText = "Mi sento triste. Giochiamo un po' insieme?";
+            } else {
+                baseLayer.style.backgroundImage = `url(${baseImages.happy})`;
+                msg.innerText = "Mi sento alla grande! Tutto perfetto.";
+            }
+        }
+    }
+
+    // Ciclo di decadimento stati (ogni 4 secondi)
+    setInterval(() => {
+        if (!isSleeping) {
+            stats.hunger = Math.max(0, stats.hunger - 1.5);
+            stats.energy = Math.max(0, stats.energy - 1.0);
+            stats.happiness = Math.max(0, stats.happiness - 2.0);
+        } else {
+            // Recupero energia durante il sonno
+            stats.energy = Math.min(100, stats.energy + 6);
+            // La fame scende più lentamente
+            stats.hunger = Math.max(0, stats.hunger - 0.5);
+            // La sveglia automatica se l'energia è piena
+            if (stats.energy >= 100) isSleeping = false;
+        }
+        updateUI();
+    }, 4000);
+
+    // Azioni del Gioco
+    function feed() {
+        if (isSleeping) return;
+        stats.hunger = Math.min(100, stats.hunger + 25);
+        animateEffect();
+        updateUI();
+    }
+
+    function toggleSleep() {
+        isSleeping = !isSleeping;
+        updateUI();
+    }
+
+    function play() {
+        if (isSleeping) return;
+        if (stats.energy < 25) {
+            alert("Sono troppo stanco per giocare! Fammi riposare.");
+            return;
+        }
+        stats.happiness = Math.min(100, stats.happiness + 30);
+        stats.energy = Math.max(0, stats.energy - 20); // Giocare consuma energia
+        animateEffect();
+        updateUI();
+    }
+
+    function animateEffect() {
+        const display = document.getElementById('peluche-display');
+        display.style.transform = "scale(1.08)";
+        setTimeout(() => display.style.transform = "scale(1)", 200);
+    }
+
+    // --- LOGICA DELL'ARMADIO (Dressing Room) ---
+    function initializeCloset() {
+        const types = ['pants', 'shirt', 'jacket', 'shoes'];
+        types.forEach(type => {
+            const grid = document.getElementById(`${type}-grid`);
+            clothingItems[type].forEach(item => {
+                const el = document.createElement('div');
+                el.id = `closet-item-${item.id}`;
+                el.className = 'clothing-item';
+                if (currentOutfit[type] === item.id) el.classList.add('active');
+                
+                // Usa l'URL della thumbnail per il pulsante nell'armadio
+                el.style.backgroundImage = `url(${item.thumb})`;
+                el.title = item.name; // Mostra nome al passaggio del mouse
+                
+                el.onclick = () => changeClothing(type, item.id);
+                grid.appendChild(el);
+            });
+        });
+        updateOutfitLayers(); // Carica l'outfit iniziale PLM
+    }
+
+    function changeClothing(type, itemId) {
+        // Aggiorna l'interfaccia dell'armadio (rimuovi 'active' dal precedente, aggiungi al nuovo)
+        const currentActiveId = clothingItems[type].find(item => item.id === currentOutfit[type]).id;
+        document.getElementById(`closet-item-${currentActiveId}`).classList.remove('active');
+        document.getElementById(`closet-item-${itemId}`).classList.add('active');
+
+        // Aggiorna lo stato dell'outfit corrente
+        currentOutfit[type] = itemId;
+
+        // Aggiorna la visualizzazione del peluche
+        updateOutfitLayers();
+    }
+
+    function updateOutfitLayers() {
+        const types = ['pants', 'shirt', 'jacket', 'shoes'];
+        types.forEach(type => {
+            const layer = document.getElementById(`${type}-layer`);
+            const currentItemData = clothingItems[type].find(item => item.id === currentOutfit[type]);
+            // Imposta l'immagine del vestito ritagliato (PNG trasparente) sul livello corrispondente
+            if (currentItemData && currentItemData.url !== "null") {
+                layer.style.backgroundImage = `url(${currentItemData.url})`;
+            } else {
+                layer.style.backgroundImage = "none";
+            }
+        });
+    }
+
+    // --- INIZIALIZZAZIONE COMPLETA ---
+    // Avvia l'armadio e il gioco al caricamento della pagina
+    window.onload = () => {
+        initializeCloset();
+        updateUI(); // Prima chiamata per impostare lo stato iniziale
+    };
+</script>
+
+</body>
+</html>
